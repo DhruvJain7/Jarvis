@@ -1,12 +1,44 @@
-from flask import Flask, jsonify, request
+import time
+
+from flask import Flask, jsonify, render_template, request
+
+from model import llama_1_response, llama_2_response, openai_1_response
 
 app = Flask(__name__)
 
 
+@app.route("/", methods=["GET"])
+def index():
+    return render_template("index.html")
+
+
 @app.route("/generate", methods=["POST"])
 def generate():
+    data = request.json
+    user_message = data.get("message")
+    model = data.get("model")
 
-    return jsonify({"message": "AI response will be printed here"})
+    if not user_message or not model:
+        return jsonify({"error": "Missing message or model selection"}), 400
+
+    system_prompt = "You are an AI assistant helping with customer inquiries. Provide a helpful and concise response."
+
+    start_time = time.time()
+
+    try:
+        if model == "llama_1":
+            result = llama_1_response(system_prompt, user_message)
+        elif model == "llama_2":
+            result = llama_2_response(system_prompt, user_message)
+        elif model == "openai":
+            result = openai_1_response(system_prompt, user_message)
+        else:
+            return jsonify({"error": "Invalid model selection"}), 400
+
+        result["duration"] = time.time() - start_time
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 if __name__ == "__main__":
